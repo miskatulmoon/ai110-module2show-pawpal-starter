@@ -42,11 +42,13 @@ It greedily schedules high-priority tasks first rather than optimizing total tas
 - How did you use AI tools during this project (for example: design brainstorming, debugging, refactoring)?
 - What kinds of prompts or questions were most helpful?
 
+I used Claude Code for design, coding, and testing. I found that it was helpful to prompt in steps over giving it one big prompt. For example, I iterated the UML throughout the project to handle a check for scheduler conflict detection, which wasn't what I originally started with.
+
 **b. Judgment and verification**
 
 - Describe one moment where you did not accept an AI suggestion as-is.
 - How did you evaluate or verify what the AI suggested?
-
+I didn't accept Claude Code's initial UI and backend integration along with the day rollover method. I asked the agent to verify its own code for each method and write tests.
 ---
 
 ## 4. Testing and Verification
@@ -56,10 +58,14 @@ It greedily schedules high-priority tasks first rather than optimizing total tas
 - What behaviors did you test?
 - Why were these tests important?
 
+I tested recurrence rollover, conflict detection (fixed vs. flexible, same pet), blackout windows, and completion status. These cover the trickiest date/overlap logic where silent bugs would be easy to miss.
+
 **b. Confidence**
 
 - How confident are you that your scheduler works correctly?
 - What edge cases would you test next if you had more time?
+
+Fairly confident because of my 17 passing tests. Next I'd test multiple pets competing for the same tight time budget and back-to-back blackout windows.
 
 ---
 
@@ -68,11 +74,14 @@ It greedily schedules high-priority tasks first rather than optimizing total tas
 **a. What went well**
 
 - What part of this project are you most satisfied with?
+I'm satisfied with how Claude Code implemented algorithmic effiencies for sorting, filtering, and conflict detection.
 
 **b. What you would improve**
 
 - If you had another iteration, what would you improve or redesign?
+I would add a feature to delete or edit tasks.
 
 **c. Key takeaway**
 
 - What is one important thing you learned about designing systems or working with AI on this project?
+My key takeaway is the importance of building your system before diving into coding with AI. It's also crucial to routinely evaluate the code that is being generated, and you can even ask the agent to review its own code. There's many decisions that need to be made as your coding goes on, which could be made in collaboration with the coding agent, and I will take this into consideration the next time I build software.

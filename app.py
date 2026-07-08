@@ -64,6 +64,8 @@ owner.name = owner_name
 pet.name = pet_name
 pet.species = species
 
+scheduler = Scheduler()
+
 st.markdown("### Tasks")
 st.caption("Add a few tasks. In your final version, these should feed into your scheduler.")
 
@@ -93,21 +95,24 @@ if st.button("Add task"):
         )
     )
 
-tasks = pet.get_tasks()
+tasks = scheduler.sort_by_priority(pet.get_tasks())
 if tasks:
-    st.write("Current tasks:")
-    st.table(
-        [
-            {
-                "title": task.title,
-                "duration_minutes": task.duration_minutes,
-                "priority": task.priority.value,
-                "time_window": task.time_window or "any",
-                "flexible": task.is_flexible,
-            }
-            for task in tasks
-        ]
-    )
+    st.write("Current tasks (sorted by priority, then shortest duration):")
+    header = st.columns([3, 2, 2, 2, 2, 2])
+    for col, label in zip(header, ["Title", "Duration", "Priority", "Window", "Flexible", "Status"]):
+        col.markdown(f"**{label}**")
+    for task in tasks:
+        row = st.columns([3, 2, 2, 2, 2, 2])
+        row[0].write(task.title)
+        row[1].write(f"{task.duration_minutes} min")
+        row[2].write(task.priority.value)
+        row[3].write(task.time_window or "any")
+        row[4].write("yes" if task.is_flexible else "no")
+        if task.completed:
+            row[5].write("✅ Done")
+        elif row[5].button("Mark complete", key=f"complete_{task.id}"):
+            task.mark_done()
+            st.rerun()
 else:
     st.info("No tasks yet. Add one above.")
 
@@ -128,9 +133,43 @@ if st.button("Generate schedule"):
     constraints = Constraints.from_owner(
         owner, day_start=day_start, day_end=day_end, available_minutes=int(available_minutes)
     )
-    scheduler = Scheduler()
     plan = scheduler.generate_plan(pet, constraints, date.today())
-    st.text(plan.to_summary())
 
-    for warning in scheduler.check_for_conflicts([plan]):
-        st.warning(warning)
+    if plan.scheduled_tasks:
+        st.success(f"Scheduled {len(plan.scheduled_tasks)} task(s) for {pet.name} on {plan.plan_date.isoformat()}.")
+        chronological = sorted(plan.scheduled_tasks, key=lambda st_: st_.start_time)
+        st.table(
+            [
+                {
+                    "start": scheduled.start_time.strftime("%H:%M"),
+                    "end": scheduled.end_time.strftime("%H:%M"),
+                    "title": scheduled.task.title,
+                    "priority": scheduled.task.priority.value,
+                    "duration_minutes": scheduled.task.duration_minutes,
+                }
+                for scheduled in chronological
+            ]
+        )
+    else:
+        st.warning("No tasks could be scheduled with the current constraints.")
+
+    if plan.skipped_tasks:
+        st.warning(f"{len(plan.skipped_tasks)} task(s) were skipped:")
+        st.table(
+            [
+                {
+                    "title": task.title,
+                    "priority": task.priority.value,
+                    "duration_minutes": task.duration_minutes,
+                    "reason": scheduler.explain_choice(task),
+                }
+                for task in plan.skipped_tasks
+            ]
+        )
+
+    conflict_warnings = scheduler.check_for_conflicts([plan])
+    if conflict_warnings:
+        for warning in conflict_warnings:
+            st.warning(warning)
+    else:
+        st.success("No scheduling conflicts detected.")
