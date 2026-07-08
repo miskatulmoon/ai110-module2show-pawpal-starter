@@ -25,11 +25,14 @@ Yes, I did make design changes. For instance, I added IDs to CareTask and Pet so
 - What constraints does your scheduler consider (for example: time, priority, preferences)?
 - How did you decide which constraints mattered most?
 
+I considered time budget, day window, blackout windows, task priority, duration, and fixed vs. flexible timing. Priority mattered most since pet care has real urgency differences.
+
 **b. Tradeoffs**
 
 - Describe one tradeoff your scheduler makes.
 - Why is that tradeoff reasonable for this scenario?
 
+It greedily schedules high-priority tasks first rather than optimizing total tasks scheduled. This is reasonable because missing a medication task is worse than missing low-priority tasks, even if greedy packing wastes some minutes.
 ---
 
 ## 3. AI Collaboration

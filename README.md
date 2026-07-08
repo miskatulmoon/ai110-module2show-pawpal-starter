@@ -76,14 +76,17 @@ Sample test output:
 
 ## 📐 Smarter Scheduling
 
-> Fill in once you've implemented scheduling logic.
-
 | Feature | Method(s) | Notes |
 |---------|-----------|-------|
-| Task sorting | | e.g., by priority, duration |
-| Filtering | | e.g., skip tasks if time runs out |
-| Conflict handling | | e.g., overlapping time slots |
-| Recurring tasks | | e.g., daily vs. weekly |
+| Priority-based sorting | `Scheduler.sort_by_priority()` | Orders tasks by priority tier first, then shortest duration, so urgent short tasks land early. |
+| Time-budget filtering | `Scheduler.filter_by_available_time()` | Greedily keeps tasks, in priority order, that still fit within the day's remaining minutes. |
+| Same-window conflict resolution | `CareTask.conflicts_with()`, `Scheduler.resolve_conflicts()` | When two fixed-time tasks are pinned to the same window, the lower-priority one is dropped. |
+| Slot-finding | `Scheduler._find_slot()`, `Scheduler._resolve_window()` | Searches a task's time window in 5-minute steps for the first open, non-overlapping slot; fixed tasks only try their exact literal time. |
+| Cross-pet conflict detection | `Scheduler.find_conflicts()` | Compares every pair of scheduled tasks across one or more pets' plans and flags any that overlap — even tasks belonging to different pets that the owner can't do at once. |
+| Safe conflict warnings | `Scheduler.check_for_conflicts()` | Defensive wrapper around `find_conflicts()` that returns printable warning strings and never raises, even on bad input. |
+| Recurring task rollover | `CareTask.create_next_occurrence()`, `Scheduler._roll_over_recurring_tasks()` | Completing a daily/weekly task automatically spawns a fresh, incomplete instance due +1 day (daily) or +7 days (weekly) later, instead of disappearing forever. |
+| Task filtering/search | `Owner.filter_tasks()` | Query tasks across all of an owner's pets by completion status and/or pet name. |
+| Explainability | `Scheduler.explain_choice()` | Returns the human-readable reason a specific task was scheduled or skipped. |
 
 ## 📸 Demo Walkthrough
 

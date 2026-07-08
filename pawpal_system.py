@@ -5,7 +5,7 @@ methods are stubs to be implemented incrementally.
 """
 
 from dataclasses import dataclass, field
-from datetime import date, time
+from datetime import date, time, timedelta
 from enum import Enum
 from uuid import uuid4
 
@@ -63,6 +63,7 @@ class CareTask:
     recurrence: Recurrence = Recurrence.ONE_TIME
     is_flexible: bool = True
     completed: bool = False
+    due_date: date | None = None
     id: str = field(default_factory=lambda: str(uuid4()))
 
     def conflicts_with(self, other: "CareTask") -> bool:
@@ -80,6 +81,23 @@ class CareTask:
     def mark_done(self) -> None:
         """Mark this task as completed."""
         self.completed = True
+
+    def create_next_occurrence(self, today: date) -> "CareTask | None":
+        """Return a fresh, incomplete instance due the next occurrence after `today`: +1 day for
+        daily tasks, +7 days for weekly tasks. Returns None if the task isn't recurring."""
+        if self.recurrence == Recurrence.ONE_TIME:
+            return None
+        next_due = today + timedelta(days=1 if self.recurrence == Recurrence.DAILY else 7)
+        return CareTask(
+            title=self.title,
+            category=self.category,
+            duration_minutes=self.duration_minutes,
+            priority=self.priority,
+            time_window=self.time_window,
+            recurrence=self.recurrence,
+            is_flexible=self.is_flexible,
+            due_date=next_due,
+        )
 
 
 @dataclass
@@ -118,6 +136,18 @@ class Owner:
     def set_preference(self, key: str, value) -> None:
         """Set an owner scheduling preference by key."""
         self.preferences[key] = value
+
+    def filter_tasks(self, completed: bool | None = None, pet_name: str | None = None) -> list[CareTask]:
+        """Return tasks across pets, optionally filtered by completion status and/or pet name."""
+        matched = []
+        for pet in self.pets:
+            if pet_name is not None and pet.name != pet_name:
+                continue
+            for task in pet.get_tasks():
+                if completed is not None and task.completed != completed:
+                    continue
+                matched.append(task)
+        return matched
 
 
 @dataclass
@@ -211,6 +241,23 @@ class Plan:
         return sum(_minutes(st.end_time) - _minutes(st.start_time) for st in self.scheduled_tasks)
 
 
+@dataclass
+class SchedulingConflict:
+    pet_a: Pet
+    scheduled_a: ScheduledTask
+    pet_b: Pet
+    scheduled_b: ScheduledTask
+
+    def describe(self) -> str:
+        """Human-readable summary of the two overlapping tasks."""
+        a = self.scheduled_a
+        b = self.scheduled_b
+        return (
+            f"{self.pet_a.name}'s '{a.task.title}' ({a.start_time.strftime('%H:%M')}-{a.end_time.strftime('%H:%M')}) "
+            f"overlaps {self.pet_b.name}'s '{b.task.title}' ({b.start_time.strftime('%H:%M')}-{b.end_time.strftime('%H:%M')})"
+        )
+
+
 class Scheduler:
     """Pure scheduling logic — no UI, no I/O."""
 
@@ -224,7 +271,13 @@ class Scheduler:
         self._explanations = {}
         plan = Plan(plan_date=plan_date, pet=pet)
 
-        active_tasks = [task for task in pet.get_tasks() if not task.completed]
+        self._roll_over_recurring_tasks(pet, plan_date)
+
+        active_tasks = [
+            task
+            for task in pet.get_tasks()
+            if not task.completed and (task.due_date is None or task.due_date <= plan_date)
+        ]
         prioritized = self.sort_by_priority(active_tasks)
 
         conflict_free = self.resolve_conflicts(prioritized)
@@ -260,6 +313,38 @@ class Scheduler:
             self._explanations[task.id] = reason
 
         return plan
+
+    def find_conflicts(self, plans: list[Plan]) -> list[SchedulingConflict]:
+        """Detect scheduled tasks that overlap in time, whether for the same pet or different
+        pets — e.g. two pets each needing the owner's attention at 06:00."""
+        entries = [(plan.pet, scheduled) for plan in plans for scheduled in plan.scheduled_tasks]
+        conflicts = []
+        for i, (pet_a, scheduled_a) in enumerate(entries):
+            for pet_b, scheduled_b in entries[i + 1 :]:
+                if scheduled_a.overlaps_with(scheduled_b):
+                    conflicts.append(SchedulingConflict(pet_a, scheduled_a, pet_b, scheduled_b))
+        return conflicts
+
+    def check_for_conflicts(self, plans: list[Plan]) -> list[str]:
+        """Lightweight, defensive wrapper around find_conflicts: returns ready-to-display
+        warning strings instead of SchedulingConflict objects, and never raises — any
+        unexpected error during the check is reported as a warning instead of crashing
+        the program."""
+        try:
+            conflicts = self.find_conflicts(plans)
+        except Exception as exc:
+            return [f"Warning: could not check for scheduling conflicts ({exc})."]
+        return [f"Warning: {conflict.describe()}" for conflict in conflicts]
+
+    def _roll_over_recurring_tasks(self, pet: Pet, today: date) -> None:
+        """Replace each completed daily/weekly task with a fresh instance due on its next occurrence."""
+        for task in pet.get_tasks():
+            if not task.completed:
+                continue
+            next_task = task.create_next_occurrence(today)
+            if next_task is not None:
+                pet.remove_task(task.id)
+                pet.add_task(next_task)
 
     def sort_by_priority(self, tasks: list[CareTask]) -> list[CareTask]:
         """Order tasks by priority, then by shortest duration first."""
