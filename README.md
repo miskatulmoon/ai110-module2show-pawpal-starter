@@ -62,7 +62,7 @@ Daily plan for Whiskers (Cat) — 2026-07-07:
 
 ```bash
 # Run the full test suite:
-pytest
+python -m pytest
 
 # Run with coverage:
 pytest --cov
@@ -71,8 +71,17 @@ pytest --cov
 Sample test output:
 
 ```
-# Paste your pytest output here
+18 passed in 0.03s 
 ```
+
+**Confidence Level: ⭐⭐⭐⭐☆ (4/5)**
+
+All 18 tests pass, covering the core contracts (task completion, recurrence rollover, priority sorting, time-budget filtering, conflict detection, and chronological display order) as well as edge cases like blackout windows and same-pet duplicate-time conflicts. Confidence isn't a full 5/5 because testing surfaced two behaviors that are technically consistent but not obviously *correct*, and haven't been confirmed as intentional:
+
+- Recurring task rollover schedules the next occurrence relative to the *completion* date, not the original `due_date` — a late completion pushes the next occurrence later than expected.
+- Two non-flexible tasks sharing the same time-*band* (e.g. both `"morning"`) are flagged as conflicting even when the band has hours of room for both, since `conflicts_with()` doesn't distinguish bands from literal fixed times.
+
+Both are pinned down by tests (`test_late_completion_rolls_over_from_completion_date_not_original_due_date`, `test_same_band_non_flexible_tasks_conflict_even_with_room_for_both`) so any future fix will show up as an intentional, visible test change rather than a silent regression.
 
 ## 📐 Smarter Scheduling
 
