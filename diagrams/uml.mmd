@@ -1,15 +1,80 @@
 classDiagram
-    %% Replace the placeholders below with your actual classes, attributes, methods, and relationships.
-    %% Keep this file updated so it matches your final implementation.
-
-    class ClassName {
-        +type attribute
-        +method() returnType
+    class Owner {
+        +string name
+        +dict preferences
+        +list~Pet~ pets
+        +add_pet(pet) void
+        +set_preference(key, value) void
     }
 
-    class AnotherClass {
-        +type attribute
-        +method() returnType
+    class Pet {
+        +string name
+        +string species
+        +string breed
+        +int age
+        +string notes
+        +list~CareTask~ tasks
+        +add_task(task) void
+        +remove_task(task_id) void
+        +get_tasks() list~CareTask~
     }
 
-    ClassName --> AnotherClass : relationship
+    class CareTask {
+        +string title
+        +string category
+        +int duration_minutes
+        +string priority
+        +string time_window
+        +string recurrence
+        +bool is_flexible
+        +conflicts_with(other_task) bool
+        +fits_in_window(start, end) bool
+        +mark_done() void
+    }
+
+    class Constraints {
+        +int available_minutes
+        +time day_start
+        +time day_end
+        +list~tuple~ blackout_windows
+        +dict owner_prefs
+        +is_time_available(start, end) bool
+        +remaining_minutes() int
+    }
+
+    class Scheduler {
+        +string strategy
+        +generate_plan(tasks, constraints) Plan
+        +sort_by_priority(tasks) list~CareTask~
+        +filter_by_available_time(tasks, constraints) list~CareTask~
+        +resolve_conflicts(tasks) list~CareTask~
+        +explain_choice(task) string
+    }
+
+    class ScheduledTask {
+        +CareTask task
+        +time start_time
+        +time end_time
+        +string reason
+        +overlaps_with(other) bool
+    }
+
+    class Plan {
+        +date date
+        +Pet pet
+        +list~ScheduledTask~ scheduled_tasks
+        +list~CareTask~ skipped_tasks
+        +int total_time_used
+        +add(scheduled_task) void
+        +to_summary() string
+        +total_duration() int
+    }
+
+    Owner "1" --> "many" Pet : owns
+    Pet "1" --> "many" CareTask : has
+    Scheduler ..> Constraints : uses
+    Scheduler ..> CareTask : consumes
+    Scheduler --> Plan : produces
+    Plan "1" --> "many" ScheduledTask : contains
+    ScheduledTask --> CareTask : wraps
+    Plan --> Pet : for
