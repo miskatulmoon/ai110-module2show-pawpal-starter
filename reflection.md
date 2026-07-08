@@ -7,10 +7,14 @@
 - Briefly describe your initial UML design.
 - What classes did you include, and what responsibilities did you assign to each?
 
+My design includes seven core objects, such as Owner, Pet, CareTask, Constraints, Scheduler, ScheduledTask, and Plan. The Owner class has add_pet(pet) and set_preference(key, value) methods. A CareTask is a single unit of pet care work, the scheduling logic revolves around it. CareTask has conflicts_with(other_task), fits_in_window(start, end), and mark_done() methods.
+
 **b. Design changes**
 
 - Did your design change during implementation?
 - If yes, describe at least one change and why you made it.
+
+Yes, I did make design changes. For instance, I added IDs to CareTask and Pet so the remove_task method and future lookups can target a specific instance. 
 
 ---
 
